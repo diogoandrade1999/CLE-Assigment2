@@ -13,7 +13,7 @@ int fileIdProcessed;
 FILE *fp;
 int sizeReaded;
 int *workers;
-int workState;
+unsigned int workState;
 int msgSent;
 int msgReceived;
 
@@ -24,9 +24,7 @@ void dispatcherJob(int nFiles, char *files[], int nProcess)
     // init workers state
     workers = (int *)malloc((nProcess - 1) * sizeof(int));
     for (p = 0; p < nProcess; p++)
-    {
         workers[p] = 0;
-    }
 
     // storeFileNames
     storeFileNames(nFiles, files);
@@ -55,9 +53,7 @@ void dispatcherJob(int nFiles, char *files[], int nProcess)
     // finish work
     workState = WORKFINISH;
     for (p = 1; p < nProcess; p++)
-    {
         MPI_Send(&workState, 1, MPI_UNSIGNED, p, 0, MPI_COMM_WORLD);
-    }
 
     // printProcessingResults
     printProcessingResults();
@@ -69,6 +65,7 @@ void waitWorkers(int last)
     PARTFILEINFO partialInfo;
     flag = 0;
 
+    // check if some worker have finished the work
     MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
 
     while (flag)
@@ -83,9 +80,11 @@ void waitWorkers(int last)
         // update worker state
         workers[partialInfo.nProcess - 1] = 0;
 
+        // check if some worker have finished the work
         MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
     }
 
+    // wait for all workers
     if (last)
     {
         while (msgReceived < msgSent)
@@ -134,9 +133,7 @@ int giveJobToWorker(int rank)
 
     // check if all work is done
     if (fileIdProcessed == nFileNames)
-    {
         return -1;
-    }
 
     // open file if it is not open
     if (fp == NULL)
@@ -196,7 +193,7 @@ int giveJobToWorker(int rank)
     partialInfo.textSize = endPosLastStr + 1;
 
     // mensagem com os dados para serem processados
-    MPI_Send(&buf, 1024, MPI_CHAR, rank, 0, MPI_COMM_WORLD);
+    MPI_Send(buf, 1024, MPI_CHAR, rank, 0, MPI_COMM_WORLD);
 
     // mensagem com estrutura para armazenar resultados
     MPI_Send(&partialInfo, sizeof(PARTFILEINFO), MPI_BYTE, rank, 0, MPI_COMM_WORLD);

@@ -19,12 +19,10 @@ void workerJob(int rank)
 
         // finish when does not have more work
         if (workState == WORKFINISH)
-        {
             break;
-        }
 
         // getDataChunk
-        MPI_Recv(buff, 1024, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&buff, 1024, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&partialInfo, sizeof(PARTFILEINFO), MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         processDataChunk(buff, &partialInfo);
