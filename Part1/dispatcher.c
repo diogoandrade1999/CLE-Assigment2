@@ -13,6 +13,7 @@ int fileIdProcessed;
 FILE *fp;
 int sizeReaded;
 int *workers;
+int nProc;
 unsigned int workState;
 int msgSent;
 int msgReceived;
@@ -22,6 +23,7 @@ void dispatcherJob(int nFiles, char *files[], int nProcess)
     int workStateJob, p;
 
     // init workers state
+    nProc = nProcess;
     workers = (int *)malloc((nProcess - 1) * sizeof(int));
     for (p = 0; p < nProcess; p++)
         workers[p] = 0;
@@ -50,10 +52,8 @@ void dispatcherJob(int nFiles, char *files[], int nProcess)
     }
     waitWorkers(1);
 
-    // finish work
-    workState = WORKFINISH;
-    for (p = 1; p < nProcess; p++)
-        MPI_Send(&workState, 1, MPI_UNSIGNED, p, 0, MPI_COMM_WORLD);
+    // stop workers
+    stop_workers(nProc);
 
     // printProcessingResults
     printProcessingResults();
@@ -99,6 +99,14 @@ void waitWorkers(int last)
     }
 }
 
+void stop_workers(int nProcess)
+{
+    // stop workers
+    workState = WORKFINISH;
+    for (int p = 1; p < nProcess; p++)
+        MPI_Send(&workState, 1, MPI_UNSIGNED, p, 0, MPI_COMM_WORLD);
+}
+
 void storeFileNames(int nFiles, char *files[])
 {
     // store files
@@ -141,6 +149,12 @@ int giveJobToWorker(int rank)
         fp = fopen(fileNames[fileIdProcessed], "r");
         if (fp == NULL)
         {
+            // stop workers
+            stop_workers(nProc);
+
+            // finish MPI
+            MPI_Finalize();
+
             printf("ERROR: Failed to open the file!\n");
             exit(1);
         }

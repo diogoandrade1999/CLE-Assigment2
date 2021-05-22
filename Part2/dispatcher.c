@@ -11,6 +11,7 @@ PARTFILEINFO *fileInfos;
 int fileIdProcessed;
 int nReaded;
 int *workers;
+int nProc;
 unsigned int workState;
 int msgSent;
 int msgReceived;
@@ -20,6 +21,7 @@ void dispatcherJob(int nFiles, char *files[], int nProcess)
     int workStateJob, p;
 
     // init workers state
+    nProc = nProcess;
     workers = (int *)malloc((nProcess - 1) * sizeof(int));
     for (p = 0; p < nProcess; p++)
         workers[p] = 0;
@@ -48,10 +50,8 @@ void dispatcherJob(int nFiles, char *files[], int nProcess)
     }
     waitWorkers(1);
 
-    // finish work
-    workState = WORKFINISH;
-    for (p = 1; p < nProcess; p++)
-        MPI_Send(&workState, 1, MPI_UNSIGNED, p, 0, MPI_COMM_WORLD);
+    // stop workers
+    stop_workers(nProc);
 
     // printProcessingResults
     printProcessingResults();
@@ -71,10 +71,10 @@ void waitWorkers(int last)
     while (flag)
     {
         // receive partial data results
-        MPI_Recv(&fileId, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&point, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&val, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&nProcess, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&fileId, 1, MPI_INT, nProcess, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&point, 1, MPI_INT, nProcess, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&val, 1, MPI_DOUBLE, nProcess, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         // savePartialResults
         savePartialResults(fileId, point, val);
@@ -93,16 +93,24 @@ void waitWorkers(int last)
         while (msgReceived < msgSent)
         {
             // receive partial data results
-            MPI_Recv(&fileId, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            MPI_Recv(&point, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            MPI_Recv(&val, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             MPI_Recv(&nProcess, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(&fileId, 1, MPI_INT, nProcess, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(&point, 1, MPI_INT, nProcess, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(&val, 1, MPI_DOUBLE, nProcess, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
             // savePartialResults
             savePartialResults(fileId, point, val);
             msgReceived++;
         }
     }
+}
+
+void stop_workers(int nProcess)
+{
+    // stop workers
+    workState = WORKFINISH;
+    for (int p = 1; p < nProcess; p++)
+        MPI_Send(&workState, 1, MPI_UNSIGNED, p, 0, MPI_COMM_WORLD);
 }
 
 void storeFileNames(int nFiles, char *files[])
@@ -125,6 +133,12 @@ void storeFileNames(int nFiles, char *files[])
         fp = fopen(fileNames[i], "rb");
         if (fp == NULL)
         {
+            // stop workers
+            stop_workers(nProc);
+
+            // finish MPI
+            MPI_Finalize();
+
             printf("ERROR: Failed to open the file!\n");
             exit(1);
         }
@@ -141,6 +155,17 @@ void storeFileNames(int nFiles, char *files[])
         fread(partialInfo.y, sizeof(double), partialInfo.n, fp);
         fread(partialInfo.valPrevious, sizeof(double), partialInfo.n, fp);
 
+        if (feof(fp))
+        {
+            // stop workers
+            stop_workers(nProc);
+
+            // finish MPI
+            MPI_Finalize();
+
+            printf("ERROR: Format file is Wrong!\n");
+            exit(1);
+        }
         // close file
         fclose(fp);
 

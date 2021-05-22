@@ -31,10 +31,10 @@ void workerJob(int rank)
         val = computeValue(n, x, y, point);
 
         // sendPartialResults
+        MPI_Send(&rank, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         MPI_Send(&fileId, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         MPI_Send(&point, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         MPI_Send(&val, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
-        MPI_Send(&rank, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
     }
 }
 

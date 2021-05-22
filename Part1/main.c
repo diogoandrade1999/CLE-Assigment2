@@ -67,19 +67,12 @@ int main(int argc, char *argv[])
             printf("Processing Time: %fs\n", (double)(t1 - t0) / CLOCKS_PER_SEC);
         }
         else
-        {
-            int workState = WORKFINISH;
-            for (int n = 1; n < size; n++)
-            {
-                MPI_Send(&workState, 1, MPI_UNSIGNED, n, 0, MPI_COMM_WORLD);
-            }
-        }
+            // stop workers
+            stop_workers(size);
     }
     // others ranks are the workers
     else
-    {
         workerJob(rank);
-    }
 
     // finish MPI
     MPI_Finalize();
