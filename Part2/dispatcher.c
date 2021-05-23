@@ -1,3 +1,10 @@
+/**
+ * \file  dispatcher.c
+ * \brief File with implementation of dispatcher functions
+ * \author Diogo Andrade (89265)
+ * \author Francisco Silveira (84802)
+ */
+
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,20 +12,35 @@
 #include "partfileinfo.h"
 #include "workstate.h"
 
+// Number of files
 int nFileNames;
+// Array with file names
 char **fileNames;
+// Stored files info
 PARTFILEINFO *fileInfos;
+// Id of file in process
 int fileIdProcessed;
+// Number of points readed
 int nReaded;
+// Workers States
 int *workers;
+// Number of processes
 int nProc;
-unsigned int workState;
+// Number of messages send
 int msgSent;
+// Number of messages received
 int msgReceived;
 
+/**
+ * \brief Dispatcher Life Cicle
+ * \param nFileNames Number of files
+ * \param fileNames Array with file names
+ * \param nProcess Number of processes
+ */
 void dispatcherJob(int nFiles, char *files[], int nProcess)
 {
-    int workStateJob, p;
+    unsigned int workState;
+    int p;
 
     // init workers state
     nProc = nProcess;
@@ -32,8 +54,8 @@ void dispatcherJob(int nFiles, char *files[], int nProcess)
     // init work
     msgSent = 0;
     msgReceived = 0;
-    workStateJob = WORKIN;
-    while (workStateJob == WORKIN)
+    workState = WORKIN;
+    while (workState == WORKIN)
     {
         for (p = 0; p < (nProcess - 1); p++)
         {
@@ -41,7 +63,7 @@ void dispatcherJob(int nFiles, char *files[], int nProcess)
             {
                 if (giveJobToWorker(p + 1) == -1)
                 {
-                    workStateJob = WORKFINISH;
+                    workState = WORKFINISH;
                     break;
                 }
             }
@@ -51,13 +73,17 @@ void dispatcherJob(int nFiles, char *files[], int nProcess)
     waitWorkers(1);
 
     // stop workers
-    stop_workers(nProc);
+    stopWorkers(nProc);
 
     // printProcessingResults
     printProcessingResults();
 }
 
-void waitWorkers(int last)
+/**
+ * \brief Wait for workers response
+ * \param wait Last check - waiting for all processing requests to respond
+ */
+void waitWorkers(int wait)
 {
     int flag;
     int fileId, point, nProcess;
@@ -68,7 +94,8 @@ void waitWorkers(int last)
     // check if some worker have finished the work
     MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
 
-    while (flag)
+    // while receive processed data from workers or if is last check wait for all workers
+    while (flag || (wait && msgReceived < msgSent))
     {
         // receive partial data results
         MPI_Recv(&nProcess, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -86,33 +113,27 @@ void waitWorkers(int last)
         // check if some worker have finished the work
         MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
     }
-
-    // wait for all workers
-    if (last)
-    {
-        while (msgReceived < msgSent)
-        {
-            // receive partial data results
-            MPI_Recv(&nProcess, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            MPI_Recv(&fileId, 1, MPI_INT, nProcess, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            MPI_Recv(&point, 1, MPI_INT, nProcess, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            MPI_Recv(&val, 1, MPI_DOUBLE, nProcess, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-            // savePartialResults
-            savePartialResults(fileId, point, val);
-            msgReceived++;
-        }
-    }
 }
 
-void stop_workers(int nProcess)
+/**
+ * \brief Tell workers to stop
+ * \param nProcess Number of processes
+ */
+void stopWorkers(int nProcess)
 {
+    unsigned int workState;
+
     // stop workers
     workState = WORKFINISH;
     for (int p = 1; p < nProcess; p++)
         MPI_Send(&workState, 1, MPI_UNSIGNED, p, 0, MPI_COMM_WORLD);
 }
 
+/**
+ * \brief Store files info
+ * \param nFileNames Number of files
+ * \param fileNames Array with file names
+ */
 void storeFileNames(int nFiles, char *files[])
 {
     FILE *fp;
@@ -134,7 +155,7 @@ void storeFileNames(int nFiles, char *files[])
         if (fp == NULL)
         {
             // stop workers
-            stop_workers(nProc);
+            stopWorkers(nProc);
 
             // finish MPI
             MPI_Finalize();
@@ -158,7 +179,7 @@ void storeFileNames(int nFiles, char *files[])
         if (feof(fp))
         {
             // stop workers
-            stop_workers(nProc);
+            stopWorkers(nProc);
 
             // finish MPI
             MPI_Finalize();
@@ -173,10 +194,16 @@ void storeFileNames(int nFiles, char *files[])
     }
 }
 
+/**
+ * \brief Give Job to woker
+ * \param rank Rank of the worker
+ * \return -1 if work is no complete otherwise 0
+ */
 int giveJobToWorker(int rank)
 {
     int fileId, n, point;
     double *x, *y;
+    unsigned int workState;
 
     // check if all work is done
     if (fileIdProcessed == nFileNames)
@@ -213,12 +240,21 @@ int giveJobToWorker(int rank)
     return 0;
 }
 
+/**
+ * \brief Save results of processed data
+ * \param fileId Id of file of the processed data
+ * \param point Point
+ * \param val Circular cross-correlation value
+ */
 void savePartialResults(int fileId, int point, double val)
 {
     // save result
     fileInfos[fileId].valCurrent[point] = val;
 }
 
+/**
+ * \brief Print results
+ */
 void printProcessingResults()
 {
     int foundExpectedRes;

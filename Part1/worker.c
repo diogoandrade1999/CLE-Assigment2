@@ -1,3 +1,10 @@
+/**
+ * \file  worker.c
+ * \brief File with implementation of worker functions
+ * \author Diogo Andrade (89265)
+ * \author Francisco Silveira (84802)
+ */
+
 #include <mpi.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,6 +13,10 @@
 #include "convertchar.h"
 #include "workstate.h"
 
+/**
+ * \brief Worker Life Cicle
+ * \param rank Rank of the worker
+ */
 void workerJob(int rank)
 {
     unsigned char buff[1024];
@@ -34,6 +45,11 @@ void workerJob(int rank)
     }
 }
 
+/**
+ * \brief Processes pieces of the data file
+ * \param buf Array with chars to be processed
+ * \param partialInfo Partial data file info
+ */
 void processDataChunk(unsigned char *buf, PARTFILEINFO *partialInfo)
 {
     int wordSize, countConsonantsWord, insideWord;

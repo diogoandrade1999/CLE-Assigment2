@@ -1,12 +1,26 @@
+/**
+ * \file  convertchar.c
+ * \brief File with implementation of functions of convert char
+ * \author Diogo Andrade (89265)
+ * \author Francisco Silveira (84802)
+ */
+
 #include "convertchar.h"
 #include <ctype.h>
 
+// Char of Specials Vowels
 unsigned char aVowel[8] = {0xa0, 0xa1, 0xa2, 0xa3, 0x80, 0x81, 0x82, 0x83};
 unsigned char eVowel[6] = {0xa8, 0xa9, 0xaa, 0x88, 0x89, 0x8a};
 unsigned char iVowel[4] = {0xac, 0xad, 0x8c, 0x8d};
 unsigned char oVowel[8] = {0xb2, 0xb3, 0xb4, 0xb5, 0x92, 0x93, 0x94, 0x95};
 unsigned char uVowel[4] = {0xb9, 0xba, 0x99, 0x9a};
 
+/**
+ * \brief Converts Special char in Normal char
+ * \param buf Array with chars
+ * \param i Index of readed char of array
+ * \return Normal char
+ */
 unsigned char convertChar(unsigned char *buf, int *i)
 {
     unsigned char c;
@@ -46,6 +60,11 @@ unsigned char convertChar(unsigned char *buf, int *i)
     return c;
 }
 
+/**
+ * \brief Converts Special vowel char in Normal vowel char
+ * \param c Special vowel char
+ * \return Normal vowel char
+ */
 unsigned char getVowel(int c)
 {
     for (int i = 0; i < 8; i++)
@@ -66,6 +85,11 @@ unsigned char getVowel(int c)
     return 0;
 }
 
+/**
+ * \brief Check if the char is a vowel
+ * \param c Char to be checked
+ * \return 0 if is not a vowel and 1 if is a vowel
+ */
 int isVowel(char c)
 {
     if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u')
@@ -75,6 +99,11 @@ int isVowel(char c)
     return 0;
 }
 
+/**
+ * \brief Check if the char is a space
+ * \param c Char to be checked
+ * \return 0 if is not a space and 1 if is a space
+ */
 int isSpace(char c)
 {
     if (c == ' ' || c == '\t' || c == '\n' || c == 0xa)
@@ -82,6 +111,11 @@ int isSpace(char c)
     return 0;
 }
 
+/**
+ * \brief Check if the char is a separation
+ * \param c Char to be checked
+ * \return 0 if is not a separation and 1 if is a separation
+ */
 int isSeparation(char c)
 {
     if (c == '-' || c == '"' || c == '[' || c == ']' || c == '(' || c == ')')
@@ -89,6 +123,11 @@ int isSeparation(char c)
     return 0;
 }
 
+/**
+ * \brief Check if the char is a punctuation
+ * \param c Char to be checked
+ * \return 0 if is not a punctuation and 1 if is a punctuation
+ */
 int isPunct(char c)
 {
     if (c == '.' || c == ',' || c == ':' || c == ';' || c == '?' || c == '!')
@@ -96,6 +135,11 @@ int isPunct(char c)
     return 0;
 }
 
+/**
+ * \brief Check if the char is a merge char
+ * \param c Char to be checked
+ * \return 0 if is not a merge char and 1 if is a merge char
+ */
 int isMerge(char c)
 {
     if (c == 0x27)
@@ -103,6 +147,11 @@ int isMerge(char c)
     return 0;
 }
 
+/**
+ * \brief Check if the char is inside of the word
+ * \param c Char to be checked
+ * \return 0 if is not a inside of the word and 1 if is a inside of the word
+ */
 int inWord(char c)
 {
     if (isalnum(c) || isMerge(c) || c == '_')
@@ -110,6 +159,11 @@ int inWord(char c)
     return 0;
 }
 
+/**
+ * \brief Check if the char is a consonant
+ * \param c Char to be checked
+ * \return 0 if is not a consonant and 1 if is a consonant
+ */
 int isConsonant(char c)
 {
     if (inWord(c))
